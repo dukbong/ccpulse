@@ -13,6 +13,7 @@ class ToolCall:
     timestamp: datetime
     tool_name: str
     tool_input: dict
+    project: str  # e.g., "ccpulse", "binpack"
 
 
 def get_claude_projects_dir() -> Path:
@@ -27,15 +28,53 @@ def parse_timestamp(ts_str: str) -> datetime:
     return datetime.fromisoformat(ts_str)
 
 
+def extract_project_name(project_dir_name: str) -> str:
+    """Extract clean project name from directory name.
+
+    Examples:
+        C--ccpulse -> ccpulse
+        C--Users-jkmo2 -> Users-jkmo2
+    """
+    import re
+    match = re.match(r'^[A-Z]--(.+)$', project_dir_name)
+    if match:
+        return match.group(1)
+    return project_dir_name
+
+
+def get_current_project_dir() -> str | None:
+    """Get project directory name for current working directory."""
+    cwd = Path.cwd()
+    projects_dir = get_claude_projects_dir()
+
+    if not projects_dir.exists():
+        return None
+
+    # Match cwd basename against project names
+    for project_dir in projects_dir.iterdir():
+        if not project_dir.is_dir():
+            continue
+
+        project_name = extract_project_name(project_dir.name)
+        if cwd.name.lower() == project_name.lower():
+            return project_dir.name
+        if project_name.lower() in str(cwd).lower():
+            return project_dir.name
+
+    return None
+
+
 def load_tool_calls(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
+    project_filter: str | None = None,
 ) -> list[ToolCall]:
     """Load tool calls from Claude projects directory within date range.
 
     Args:
         start_date: Start date (inclusive). If None, defaults to today at 00:00:00.
         end_date: End date (inclusive). If None, defaults to today at 23:59:59.
+        project_filter: Project directory name to filter by (e.g., "C--ccpulse"). If None, all projects.
     """
     projects_dir = get_claude_projects_dir()
     if not projects_dir.exists():
@@ -62,6 +101,13 @@ def load_tool_calls(
     for project_dir in projects_dir.iterdir():
         if not project_dir.is_dir():
             continue
+
+        # Apply project filter
+        if project_filter and project_dir.name != project_filter:
+            continue
+
+        # Extract project name
+        project_name = extract_project_name(project_dir.name)
 
         for jsonl_file in project_dir.glob('*.jsonl'):
             try:
@@ -95,6 +141,7 @@ def load_tool_calls(
                                             timestamp=timestamp,
                                             tool_name=item.get('name', ''),
                                             tool_input=item.get('input', {}),
+                                            project=project_name,
                                         ))
                         except (json.JSONDecodeError, ValueError):
                             continue

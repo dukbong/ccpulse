@@ -56,6 +56,7 @@ def display(
     show_skills: bool = False,
     show_subagents: bool = False,
     show_full: bool = False,
+    project_name: str | None = None,
 ):
     """Display skills and subagents usage."""
     # Determine what to show
@@ -90,6 +91,10 @@ def display(
     # Build panel content with period and totals
     panel_content = f"[{COLOR_MUTED}]Period: {subtitle}[/]"
 
+    # Add project context for --here mode
+    if project_name:
+        panel_content += f"\n[{COLOR_MUTED}]Project: {project_name}[/]"
+
     # Add total counts based on display flags
     if display_skills and display_subagents:
         panel_content += f"\n[{COLOR_MUTED}]Total Skill Calls: {stats.total_skills}[/]"
@@ -116,7 +121,10 @@ def display(
     # Check if any data
     if stats.total_skills == 0 and stats.total_subagents == 0:
         console.print()
-        console.print(f"[{COLOR_MUTED}]No custom skills or subagents used yet.[/]")
+        if project_name:
+            console.print(f"[{COLOR_MUTED}]No custom skills or subagents used in project '{project_name}'.[/]")
+        else:
+            console.print(f"[{COLOR_MUTED}]No custom skills or subagents used yet.[/]")
         console.print()
         console.print(f"[{COLOR_MUTED}]Register skills in .claude/settings.json[/]")
         console.print(f"[{COLOR_MUTED}]or create custom subagents to see stats here.[/]")

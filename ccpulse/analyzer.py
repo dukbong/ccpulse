@@ -26,21 +26,34 @@ class Stats:
     total_subagents: int
 
 
-def analyze(tool_calls: list[ToolCall]) -> Stats:
-    """Analyze tool calls for skills and subagents usage."""
+def analyze(tool_calls: list[ToolCall], include_project_prefix: bool = True) -> Stats:
+    """Analyze tool calls for skills and subagents usage.
+
+    Args:
+        tool_calls: List of tool calls to analyze.
+        include_project_prefix: If True, prepend [project] to names.
+    """
     skills = Counter()
     subagents = Counter()
 
     for call in tool_calls:
         if call.tool_name == 'Skill':
             skill_name = call.tool_input.get('skill', 'unknown')
-            skills[skill_name] += 1
+            if include_project_prefix:
+                display_name = f"[{call.project}] {skill_name}"
+            else:
+                display_name = skill_name
+            skills[display_name] += 1
 
         elif call.tool_name == 'Task':
             subagent_type = call.tool_input.get('subagent_type', '')
             # Only count custom subagents (not built-in)
             if subagent_type and subagent_type not in BUILTIN_SUBAGENTS:
-                subagents[subagent_type] += 1
+                if include_project_prefix:
+                    display_name = f"[{call.project}] {subagent_type}"
+                else:
+                    display_name = subagent_type
+                subagents[display_name] += 1
 
     return Stats(
         skills=dict(skills.most_common()),

@@ -108,6 +108,12 @@ def main(
         "-f",
         help="Show all results (default: top 5). Requires --skills or --subagents",
     ),
+    here: bool = typer.Option(
+        False,
+        "--here",
+        "-h",
+        help="Show only current project (no [project] prefix)",
+    ),
     version: bool = typer.Option(
         None,
         "--version",
@@ -126,8 +132,29 @@ def main(
     # Parse date range
     start_date, end_date, date_label = parse_period(period)
 
-    tool_calls = load_tool_calls(start_date=start_date, end_date=end_date)
-    stats = analyze(tool_calls)
+    # Determine project filter and display mode
+    project_filter = None
+    include_project_prefix = True
+    current_project_name = None
+
+    if here:
+        from .loader import get_current_project_dir, extract_project_name
+
+        project_filter = get_current_project_dir()
+        if project_filter is None:
+            console.print("[red]Error: Could not detect current project.[/red]")
+            console.print("[yellow]Make sure you're in a directory tracked by Claude Code.[/yellow]")
+            raise typer.Exit(1)
+
+        include_project_prefix = False
+        current_project_name = extract_project_name(project_filter)
+
+    tool_calls = load_tool_calls(
+        start_date=start_date,
+        end_date=end_date,
+        project_filter=project_filter,
+    )
+    stats = analyze(tool_calls, include_project_prefix=include_project_prefix)
     display(
         stats,
         start_date=start_date,
@@ -136,6 +163,7 @@ def main(
         show_skills=skills,
         show_subagents=subagents,
         show_full=full,
+        project_name=current_project_name,
     )
 
 
