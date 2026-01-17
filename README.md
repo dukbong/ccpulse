@@ -28,22 +28,69 @@ pip install ccpulse
 ## Usage
 
 ```bash
-# Show all time stats
+# Today (default)
 ccpulse
 
 # Last 7 days
-ccpulse --days 7
+ccpulse 7d
 
-# Last 30 days
-ccpulse -d 30
+# Last 2 weeks
+ccpulse 2w
+
+# Last 1 month
+ccpulse 1m
+
+# From specific date (YYYYMMDD)
+ccpulse 20260101
+
+# Show only skills (top 5)
+ccpulse 7d -s
+
+# Show only subagents (top 5)
+ccpulse 1m -a
+
+# Show all skills (no limit)
+ccpulse -s -f
+
+# Combine options
+ccpulse 2w -a -f
 ```
+
+## Options
+
+### Date Period (positional argument)
+- (none) - Today only (default)
+- `7d` - Last 7 days
+- `2w` - Last 2 weeks
+- `1m` - Last 1 month
+- `20260101` - From specific date to today (YYYYMMDD format)
+
+### Filtering
+- `--skills` / `-s` - Show only custom skills
+- `--subagents` / `-a` - Show only custom subagents
+- `--full` / `-f` - Show all results (default: top 5). Requires `--skills` or `--subagents`
+
+### Other
+- `--version` / `-v` - Show version and exit
+- `--help` - Show help message
 
 ## Example Output
 
 ```
-                ┌── ccpulse ──┐
-                │  All time   │
-                └─────────────┘
+┌─ ccpulse ───────────────────────────────┐
+│  Today                                  │
+└─────────────────────────────────────────┘
+
+Custom Subagents
+────────────────────────────────────────
+┌─────────────┬──────┬───────────────────┐
+│ Subagent    │ Uses │                   │
+├─────────────┼──────┼───────────────────┤
+│ test-runner │   15 │ ===============   │
+│ linter      │    8 │ ========          │
+│ validator   │    5 │ =====             │
+└─────────────┴──────┴───────────────────┘
+Showing top 5: 28 calls
 
 Skills
 ────────────────────────────────────────
@@ -53,18 +100,10 @@ Skills
 │ commit      │   42 │ ===============   │
 │ review-pr   │   18 │ ======            │
 │ test        │    7 │ ==                │
+│ deploy      │    5 │ =                 │
+│ rollback    │    3 │ =                 │
 └─────────────┴──────┴───────────────────┘
-67 total calls
-
-Custom Subagents
-────────────────────────────────────────
-┌─────────────┬──────┬───────────────────┐
-│ Subagent    │ Uses │                   │
-├─────────────┼──────┼───────────────────┤
-│ test-runner │   15 │ ===============   │
-│ linter      │    8 │ ========          │
-└─────────────┴──────┴───────────────────┘
-23 total calls
+Showing top 5: 75 calls
 ```
 
 ## Data Source
