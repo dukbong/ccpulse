@@ -11,7 +11,7 @@
 
 **Track your custom Skills and Subagents usage in Claude Code**
 
-*Analyze. Measure. Optimize your AI workflow.*
+*Analyze your prompts. Measure their impact. Optimize your workflow.*
 
 [Installation](#-installation) • [Usage](#-usage) • [Features](#-features) • [Examples](#-example-output)
 
@@ -26,6 +26,18 @@ ccpulse analyzes your local Claude Code session data and provides insights into:
 - **🎨 Skills** - Your custom slash commands (like `/commit`, `/review-pr`)
 - **🤖 Custom Subagents** - Your registered subagent types
 - **📁 Multi-Project Support** - Track usage across all your projects or filter by current project
+
+## 💡 Why ccpulse?
+
+In the AI era, prompts are becoming:
+- **More complex** - Skills and subagents pile up over time
+- **Hard to manage** - Which ones are actually being used?
+- **Potential junk** - Unused prompts clutter your workflow
+
+ccpulse helps you:
+- 🧹 **Find unused prompts** - Identify and remove what you don't need
+- 🚀 **Prioritize improvements** - Focus on what you use most
+- 📊 **Keep things clean** - Prevent prompt bloat
 
 ## 📦 Installation
 
@@ -182,6 +194,8 @@ debugger        ████████████████                
 - 🚀 **Fast & Lightweight** - Analyzes thousands of sessions instantly
 - 🔒 **Privacy First** - All data stays on your machine
 - 📊 **Flexible Filtering** - Filter by time, project, skills, or subagents
+- 🧹 **Spot Unused Prompts** - Haven't used that skill in 3 months? Time to clean up
+- 📈 **Optimize What Matters** - Focus on improving your most-used prompts
 
 ## 🔒 Data Source
 
