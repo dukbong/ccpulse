@@ -22,15 +22,30 @@ COLOR_SECONDARY = "#81B29A"
 COLOR_MUTED = "#6B7280"
 COLOR_TEXT = "#F4F3EE"
 
-BAR_CHAR = "="
+BAR_CHAR = "█"
+BAR_WIDTH = 30      # Width of the bar chart
+NAME_MIN_WIDTH = 15 # Minimum width for name column
 
 
-def make_bar(value: int, max_value: int, width: int = 15) -> str:
+def make_bar(value: int, max_value: int, width: int = 30) -> str:
     """Create a bar for the given value."""
     if max_value == 0:
         return ""
     filled = int((value / max_value) * width)
     return BAR_CHAR * filled
+
+
+def display_usage_list(
+    items: list[tuple[str, int]],
+    max_count: int,
+    name_width: int,
+    bar_width: int,
+):
+    """Display usage as plain text with bars."""
+    for name, count in items:
+        bar = make_bar(count, max_count, bar_width)
+        line = f"{name:<{name_width}} {bar:<{bar_width}} {count:>3}"
+        console.print(f"[{COLOR_TEXT}]{line}[/]")
 
 
 def display(
@@ -43,6 +58,10 @@ def display(
     show_full: bool = False,
 ):
     """Display skills and subagents usage."""
+    # Determine what to show
+    display_skills = not show_subagents  # Show skills unless --subagents is specified
+    display_subagents = not show_skills  # Show subagents unless --skills is specified
+
     # Header
     if date_label:
         # Check if it's a --last format (e.g., "7d", "2w", "1m")
@@ -68,20 +87,28 @@ def display(
         # Default: today
         subtitle = "Today"
 
+    # Build panel content with period and totals
+    panel_content = f"[{COLOR_MUTED}]Period: {subtitle}[/]"
+
+    # Add total counts based on display flags
+    if display_skills and display_subagents:
+        panel_content += f"\n[{COLOR_MUTED}]Total Skill Calls: {stats.total_skills}[/]"
+        panel_content += f"\n[{COLOR_MUTED}]Total Subagent Calls: {stats.total_subagents}[/]"
+    elif display_skills:
+        panel_content += f"\n[{COLOR_MUTED}]Total Skill Calls: {stats.total_skills}[/]"
+    else:
+        panel_content += f"\n[{COLOR_MUTED}]Total Subagent Calls: {stats.total_subagents}[/]"
+
     panel = Panel(
-        f"[{COLOR_MUTED}]{subtitle}[/]",
+        panel_content,
         title=f"[bold {COLOR_PRIMARY}]ccpulse[/]",
         title_align="left",
-        box=box.ROUNDED,
+        box=box.HEAVY,
         border_style=COLOR_PRIMARY,
         padding=(0, 2),
     )
     console.print()
     console.print(panel)
-
-    # Determine what to show
-    display_skills = not show_subagents  # Show skills unless --subagents is specified
-    display_subagents = not show_skills  # Show subagents unless --skills is specified
 
     # Limit to top 5 unless --full is specified
     limit = None if show_full else 5
@@ -98,19 +125,8 @@ def display(
     # Custom Subagents (show first)
     if display_subagents and stats.subagents:
         console.print()
-        console.print(f"[bold {COLOR_PRIMARY}]Custom Subagents[/]")
-        console.print(f"[{COLOR_MUTED}]{'─' * 40}[/]")
-
-        table = Table(
-            show_header=True,
-            header_style=f"bold {COLOR_TEXT}",
-            box=box.ROUNDED,
-            border_style=COLOR_MUTED,
-            padding=(0, 1),
-        )
-        table.add_column("Subagent", style=COLOR_TEXT)
-        table.add_column("Uses", justify="right", style=COLOR_SECONDARY)
-        table.add_column("", width=17)
+        console.print(f"[bold {COLOR_PRIMARY}]CUSTOM SUBAGENT USAGE[/]")
+        console.print(f"[{COLOR_MUTED}]{'─' * 60}[/]")
 
         # Sort by count (descending) and apply limit
         sorted_subagents = sorted(stats.subagents.items(), key=lambda x: x[1], reverse=True)
@@ -118,30 +134,17 @@ def display(
             sorted_subagents = sorted_subagents[:limit]
 
         max_count = max(item[1] for item in sorted_subagents) if sorted_subagents else 0
-        for subagent, count in sorted_subagents:
-            bar = make_bar(count, max_count)
-            table.add_row(subagent, str(count), f"[{COLOR_PRIMARY}]{bar}[/]")
 
-        console.print(table)
-        showing_text = f"Showing top {limit}" if limit and len(stats.subagents) > limit else "Total"
-        console.print(f"[{COLOR_MUTED}]{showing_text}: {stats.total_subagents} calls[/]")
+        # Calculate dynamic name width
+        name_width = max(max(len(name) for name, _ in sorted_subagents), NAME_MIN_WIDTH)
+
+        display_usage_list(sorted_subagents, max_count, name_width, BAR_WIDTH)
 
     # Skills (show second)
     if display_skills and stats.skills:
         console.print()
-        console.print(f"[bold {COLOR_PRIMARY}]Skills[/]")
-        console.print(f"[{COLOR_MUTED}]{'─' * 40}[/]")
-
-        table = Table(
-            show_header=True,
-            header_style=f"bold {COLOR_TEXT}",
-            box=box.ROUNDED,
-            border_style=COLOR_MUTED,
-            padding=(0, 1),
-        )
-        table.add_column("Skill", style=COLOR_TEXT)
-        table.add_column("Uses", justify="right", style=COLOR_SECONDARY)
-        table.add_column("", width=17)
+        console.print(f"[bold {COLOR_PRIMARY}]SKILL USAGE[/]")
+        console.print(f"[{COLOR_MUTED}]{'─' * 60}[/]")
 
         # Sort by count (descending) and apply limit
         sorted_skills = sorted(stats.skills.items(), key=lambda x: x[1], reverse=True)
@@ -149,12 +152,10 @@ def display(
             sorted_skills = sorted_skills[:limit]
 
         max_count = max(item[1] for item in sorted_skills) if sorted_skills else 0
-        for skill, count in sorted_skills:
-            bar = make_bar(count, max_count)
-            table.add_row(skill, str(count), f"[{COLOR_PRIMARY}]{bar}[/]")
 
-        console.print(table)
-        showing_text = f"Showing top {limit}" if limit and len(stats.skills) > limit else "Total"
-        console.print(f"[{COLOR_MUTED}]{showing_text}: {stats.total_skills} calls[/]")
+        # Calculate dynamic name width
+        name_width = max(max(len(name) for name, _ in sorted_skills), NAME_MIN_WIDTH)
+
+        display_usage_list(sorted_skills, max_count, name_width, BAR_WIDTH)
 
     console.print()
