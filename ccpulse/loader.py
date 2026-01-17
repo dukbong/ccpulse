@@ -27,16 +27,35 @@ def parse_timestamp(ts_str: str) -> datetime:
     return datetime.fromisoformat(ts_str)
 
 
-def load_tool_calls(days: int | None = None) -> list[ToolCall]:
-    """Load all tool calls from Claude projects directory."""
+def load_tool_calls(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> list[ToolCall]:
+    """Load tool calls from Claude projects directory within date range.
+
+    Args:
+        start_date: Start date (inclusive). If None, defaults to today at 00:00:00.
+        end_date: End date (inclusive). If None, defaults to today at 23:59:59.
+    """
     projects_dir = get_claude_projects_dir()
     if not projects_dir.exists():
         return []
 
-    cutoff = None
-    if days is not None:
-        from datetime import timedelta
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    # Default to today if no dates provided
+    if start_date is None and end_date is None:
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = today
+        end_date = today.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif start_date is None:
+        # If only end_date provided, no start limit
+        start_date = datetime.min.replace(tzinfo=timezone.utc)
+    elif end_date is None:
+        # If only start_date provided, set end to today
+        end_date = datetime.now(timezone.utc).replace(hour=23, minute=59, second=59, microsecond=999999)
+    else:
+        # Both dates provided, normalize them to include full days
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
 
     tool_calls = []
 
@@ -57,7 +76,9 @@ def load_tool_calls(days: int | None = None) -> list[ToolCall]:
                                 continue
 
                             timestamp = parse_timestamp(ts_str)
-                            if cutoff and timestamp < cutoff:
+
+                            # Filter by date range
+                            if timestamp < start_date or timestamp > end_date:
                                 continue
 
                             # Only process assistant messages
