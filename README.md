@@ -9,9 +9,9 @@
   <img src="https://img.shields.io/pypi/dm/ccpulse?color=F4A261&style=flat-square" alt="Downloads">
 </p>
 
-**Track your custom Skills and Subagents usage in Claude Code**
+**Track quality metrics for custom Skills and Subagents in Claude Code**
 
-*Analyze your prompts. Measure their impact. Optimize your workflow.*
+*Find broken tools fast. Focus on quality, not quantity.*
 
 [Installation](#-installation) • [Usage](#-usage) • [Features](#-features) • [Examples](#-example-output)
 
@@ -21,23 +21,29 @@
 
 ## 🎯 What it does
 
-ccpulse analyzes your local Claude Code session data and provides insights into:
+ccpulse analyzes your Claude Code session data to identify **failing** Skills and Subagents:
 
-- **🎨 Skills** - Your custom slash commands (like `/commit`, `/review-pr`)
-- **🤖 Custom Subagents** - Your registered subagent types
-- **📁 Multi-Project Support** - Track usage across all your projects or filter by current project
+- **🎨 Skills** - Track success rates for custom slash commands
+- **🤖 Custom Subagents** - Monitor custom subagent reliability
+- **⚠️ Quality Focus** - Shows only tools with issues (< 80% success rate by default)
+- **📁 Multi-Project Support** - Track quality across all projects or filter by current project
 
 ## 💡 Why ccpulse?
 
-In the AI era, prompts are becoming:
-- **More complex** - Skills and subagents pile up over time
-- **Hard to manage** - Which ones are actually being used?
-- **Potential junk** - Unused prompts clutter your workflow
+**The Core Insight:** Using a skill 100 times means nothing if it fails 90 times.
 
-ccpulse helps you:
-- 🧹 **Find unused prompts** - Identify and remove what you don't need
-- 🚀 **Prioritize improvements** - Focus on what you use most
-- 📊 **Keep things clean** - Prevent prompt bloat
+Version 1.0.0 represents a **complete pivot** from counting usage to tracking quality:
+
+### What Changed
+- ❌ **Removed:** Usage counts and frequency tracking
+- ✅ **Added:** Success rates, failure tracking, and error detection
+- 🎯 **Philosophy:** Do one thing well - find broken tools fast
+
+### Why Quality Matters
+- **Catch issues early** - Know when skills or subagents start failing
+- **Focus on reliability** - Success rate matters more than call count
+- **Actionable insights** - See exactly which tools need attention
+- **Zero noise** - Only shows problematic tools (≥80% success rate = hidden)
 
 ## 📦 Installation
 
@@ -48,17 +54,17 @@ pip install ccpulse
 ## 🚀 Quick Start
 
 ```bash
-# View today's stats across all projects
+# Check quality across all projects (today)
 ccpulse
 
-# Filter to current project only
+# Check current project only
 ccpulse --here
 
-# View last 7 days
+# Check last 7 days
 ccpulse 7d
 
-# Current project, last month
-ccpulse 1m --here
+# Adjust threshold (show tools below 90% success rate)
+ccpulse --threshold 90
 ```
 
 ## 💡 Usage
@@ -85,7 +91,7 @@ ccpulse 20260101
 ### Project Filtering
 
 ```bash
-# Show only current project (no [project] prefix)
+# Show only current project
 ccpulse --here
 
 # Combine with time periods
@@ -96,20 +102,33 @@ ccpulse --here --skills
 ccpulse 1m --here --subagents
 ```
 
-### Display Options
+### Quality Thresholds
 
 ```bash
-# Show only skills (top 5)
-ccpulse 7d -s
+# Default: show tools with <80% success rate
+ccpulse
 
-# Show only subagents (top 5)
-ccpulse 1m -a
+# Stricter: show tools with <90% success rate
+ccpulse --threshold 90
 
-# Show all skills (no limit)
-ccpulse -s -f
+# More lenient: show tools with <50% success rate
+ccpulse --threshold 50
 
-# Combine options
-ccpulse 2w -a -f
+# Show all tools (even 0% success rate)
+ccpulse --threshold 100
+```
+
+### Display Filters
+
+```bash
+# Show only skills with issues
+ccpulse -s
+
+# Show only subagents with issues
+ccpulse -a
+
+# Combine filters
+ccpulse 7d --skills --threshold 90
 ```
 
 ## ⚙️ Options
@@ -130,8 +149,8 @@ ccpulse 2w -a -f
 |--------|-------|-------------|
 | `--skills` | `-s` | Show only custom skills |
 | `--subagents` | `-a` | Show only custom subagents |
-| `--full` | `-f` | Show all results (default: top 5) |
-| `--here` | `-h` | Show only current project (removes `[project]` prefix) |
+| `--threshold` | `-t` | Success rate threshold (0-100, default: 80) |
+| `--here` | `-h` | Show only current project |
 
 ### Other
 
@@ -142,64 +161,118 @@ ccpulse 2w -a -f
 
 ## 📊 Example Output
 
-### Multi-Project View (Default)
+### Problematic Tools Found
 
 ```
-╭────────────────────────────────── ccpulse ──────────────────────────────────╮
-│  Period: Last 7 days                                                        │
-│  Total Skill Calls: 95                                                      │
-│  Total Subagent Calls: 69                                                   │
-╰─────────────────────────────────────────────────────────────────────────────╯
+╭──────────────── ccpulse ────────────────╮
+│  Period: Last 7 days                    │
+│  Project: ccpulse                       │
+│  Status: 2 problematic tools found      │
+╰─────────────────────────────────────────╯
 
-SKILL USAGE
-────────────────────────────────────────────────────────────
-[ccpulse] commit         ███████████████████████████  42
-[binpack] optimize       ████████████████████          28
-[ccpulse] review-pr      ██████████████                18
-[boxhub] deploy          ████████                      12
-
-CUSTOM SUBAGENT USAGE
-────────────────────────────────────────────────────────────
-[ccpulse] test-runner    ██████████████████████████████  20
-[binpack] analyzer       ██████████████████████          15
-[ccpulse] debugger       ████████████████                11
+⚠️  SKILLS WITH ISSUES
+────────────────────────────────────────
+deploy          45%  █████      9/20  (1 incomplete)
+test-report     62%  ██████     5/8
 ```
 
-### Single Project View (`--here`)
+**Color Coding:**
+- 🔴 **Red** (< 50%): Critical - needs immediate attention
+- 🟡 **Yellow** (50-69%): Warning - investigate soon
+- ⚪ **Normal** (70-79%): Below threshold but not critical
+
+### All Tools Working Well
 
 ```
-╭────────────────────────────────── ccpulse ──────────────────────────────────╮
-│  Period: Last 7 days                                                        │
-│  Project: ccpulse                                                           │
-│  Total Skill Calls: 60                                                      │
-│  Total Subagent Calls: 31                                                   │
-╰─────────────────────────────────────────────────────────────────────────────╯
+╭──────────────── ccpulse ────────────────╮
+│  Period: Last 7 days                    │
+│  Status: All tools working well!        │
+╰─────────────────────────────────────────╯
 
-SKILL USAGE
-────────────────────────────────────────────────────────────
-commit          ███████████████████████████████  42
-review-pr       ██████████████                   18
+✅ No problematic skills or subagents detected.
 
-CUSTOM SUBAGENT USAGE
-────────────────────────────────────────────────────────────
-test-runner     ██████████████████████████████  20
-debugger        ████████████████                11
+   All executions have ≥80% success rate.
+```
+
+### Multi-Project View
+
+```
+╭──────────────── ccpulse ────────────────╮
+│  Period: Last 30 days                   │
+│  Status: 3 problematic tools found      │
+╰─────────────────────────────────────────╯
+
+⚠️  SKILLS WITH ISSUES
+────────────────────────────────────────
+[ccpulse] deploy         45%  █████      9/20
+[binpack] test-runner    58%  ██████    11/19  (2 incomplete)
+
+⚠️  SUBAGENTS WITH ISSUES
+────────────────────────────────────────
+[boxhub] analyzer        72%  ███████   18/25
 ```
 
 ## ✨ Features
 
-- 🎯 **Zero Configuration** - Works out of the box with Claude Code
-- 📁 **Multi-Project Support** - Track usage across all projects or focus on one
-- 🎨 **Beautiful Output** - Rich terminal UI with progress bars
-- 🚀 **Fast & Lightweight** - Analyzes thousands of sessions instantly
+- 🎯 **Quality Over Quantity** - Focus on success rates, not call counts
+- 🚨 **Smart Filtering** - Only shows problematic tools (< 80% by default)
+- 🎨 **Color-Coded Output** - Instantly see severity (red/yellow/normal)
+- 📊 **Actionable Metrics** - Success rate %, success/failure counts, incomplete tracking
+- 📁 **Multi-Project Support** - Track quality across all projects or focus on one
 - 🔒 **Privacy First** - All data stays on your machine
-- 📊 **Flexible Filtering** - Filter by time, project, skills, or subagents
-- 🧹 **Spot Unused Prompts** - Haven't used that skill in 3 months? Time to clean up
-- 📈 **Optimize What Matters** - Focus on improving your most-used prompts
+- 🚀 **Fast & Lightweight** - Two-pass JSONL parsing for accurate results
+- ⚙️ **Configurable Threshold** - Adjust sensitivity with `--threshold`
+
+## 🔄 Migration from 0.x
+
+**Breaking Changes in 1.0.0:**
+
+ccpulse has completely pivoted from usage tracking to quality tracking.
+
+### What's Removed
+- ❌ Usage counts and frequency metrics
+- ❌ Top-N display (`--full` option)
+- ❌ "Total calls" statistics
+
+### What's New
+- ✅ Success rate percentage (primary metric)
+- ✅ Success/failure counts (e.g., "18/20")
+- ✅ Incomplete execution tracking
+- ✅ `--threshold` option to adjust sensitivity
+- ✅ Color-coded severity indicators
+
+### What Stays the Same
+- ✅ Time period filtering (`7d`, `2w`, `1m`)
+- ✅ Project filtering (`--here`)
+- ✅ Display filters (`--skills`, `--subagents`)
+- ✅ All data stays local
+
+### Upgrade Guide
+
+```bash
+# Update to 1.0.0
+pip install --upgrade ccpulse
+
+# Old usage (0.x) - showed top 5 most used skills
+ccpulse 7d --skills
+
+# New usage (1.0.0) - shows skills with <80% success rate
+ccpulse 7d --skills
+
+# Adjust threshold if needed
+ccpulse 7d --skills --threshold 90
+```
+
+**No backward compatibility** - This is a complete pivot. If you need usage counting, stay on version 0.3.1.
 
 ## 🔒 Data Source
 
 Reads from `~/.claude/projects/` where Claude Code stores local session data.
+
+**How It Works:**
+1. **Pass 1:** Extract all tool executions with their IDs
+2. **Pass 2:** Match tool results to determine success/failure
+3. **Analysis:** Calculate success rates and filter by threshold
 
 **Privacy Note:** No data is sent anywhere - everything stays on your machine.
 

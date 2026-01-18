@@ -5,15 +5,19 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
+import os
 
 
 @dataclass
-class ToolCall:
-    """Represents a tool call from a session."""
+class ToolExecution:
+    """Represents a tool execution with its result status."""
     timestamp: datetime
     tool_name: str
     tool_input: dict
     project: str  # e.g., "ccpulse", "binpack"
+    tool_use_id: str
+    is_error: bool | None  # None if no result available
+    has_result: bool
 
 
 def get_claude_projects_dir() -> Path:
@@ -64,12 +68,14 @@ def get_current_project_dir() -> str | None:
     return None
 
 
-def load_tool_calls(
+def load_tool_executions(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     project_filter: str | None = None,
-) -> list[ToolCall]:
-    """Load tool calls from Claude projects directory within date range.
+) -> list[ToolExecution]:
+    """Load tool executions from Claude projects directory within date range.
+
+    Uses two-pass parsing to correlate tool_use with tool_result entries.
 
     Args:
         start_date: Start date (inclusive). If None, defaults to today at 00:00:00.
@@ -96,7 +102,8 @@ def load_tool_calls(
         start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
         end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
 
-    tool_calls = []
+    # Two-pass parsing: Pass 1 - Build dict of executions from tool_use
+    executions_dict: dict[str, ToolExecution] = {}
 
     for project_dir in projects_dir.iterdir():
         if not project_dir.is_dir():
@@ -111,6 +118,12 @@ def load_tool_calls(
 
         for jsonl_file in project_dir.glob('*.jsonl'):
             try:
+                # Quick filter: skip files modified before start_date
+                file_mtime = datetime.fromtimestamp(os.path.getmtime(jsonl_file), tz=timezone.utc)
+                if file_mtime < start_date:
+                    continue
+
+                # Pass 1: Extract tool_use entries
                 with open(jsonl_file, 'r', encoding='utf-8') as f:
                     for line in f:
                         if not line.strip():
@@ -137,16 +150,51 @@ def load_tool_calls(
                             if isinstance(content, list):
                                 for item in content:
                                     if isinstance(item, dict) and item.get('type') == 'tool_use':
-                                        tool_calls.append(ToolCall(
-                                            timestamp=timestamp,
-                                            tool_name=item.get('name', ''),
-                                            tool_input=item.get('input', {}),
-                                            project=project_name,
-                                        ))
+                                        tool_use_id = item.get('id', '')
+                                        if tool_use_id:
+                                            executions_dict[tool_use_id] = ToolExecution(
+                                                timestamp=timestamp,
+                                                tool_name=item.get('name', ''),
+                                                tool_input=item.get('input', {}),
+                                                project=project_name,
+                                                tool_use_id=tool_use_id,
+                                                is_error=None,
+                                                has_result=False,
+                                            )
                         except (json.JSONDecodeError, ValueError):
                             continue
+
+                # Pass 2: Update with tool_result entries
+                with open(jsonl_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        try:
+                            data = json.loads(line)
+
+                            # Only process user messages
+                            if data.get('type') != 'user':
+                                continue
+
+                            message = data.get('message', {})
+                            content = message.get('content', [])
+
+                            if isinstance(content, list):
+                                for item in content:
+                                    if isinstance(item, dict) and item.get('type') == 'tool_result':
+                                        tool_use_id = item.get('tool_use_id', '')
+                                        if tool_use_id and tool_use_id in executions_dict:
+                                            execution = executions_dict[tool_use_id]
+                                            execution.has_result = True
+                                            # Default to False if is_error field missing
+                                            execution.is_error = item.get('is_error', False)
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+
             except (IOError, OSError):
                 continue
 
-    tool_calls.sort(key=lambda x: x.timestamp)
-    return tool_calls
+    # Convert dict to sorted list
+    executions = list(executions_dict.values())
+    executions.sort(key=lambda x: x.timestamp)
+    return executions

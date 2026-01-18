@@ -7,13 +7,13 @@ from typing import Optional
 import typer
 
 from . import __version__
-from .analyzer import analyze
-from .display import console, display
-from .loader import load_tool_calls
+from .analyzer import analyze_quality
+from .display import console, display_quality
+from .loader import load_tool_executions
 
 app = typer.Typer(
     name="ccpulse",
-    help="Track your custom Skills and Subagents usage in Claude Code",
+    help="Track quality metrics for custom Skills and Subagents in Claude Code",
     add_completion=False,
 )
 
@@ -102,11 +102,13 @@ def main(
         "-a",
         help="Show only custom subagents",
     ),
-    full: bool = typer.Option(
-        False,
-        "--full",
-        "-f",
-        help="Show all results (default: top 5). Requires --skills or --subagents",
+    threshold: int = typer.Option(
+        80,
+        "--threshold",
+        "-t",
+        help="Success rate threshold percentage (default: 80). Show tools below this rate.",
+        min=0,
+        max=100,
     ),
     here: bool = typer.Option(
         False,
@@ -123,12 +125,7 @@ def main(
         help="Show version and exit",
     ),
 ):
-    """Track your custom Skills and Subagents usage in Claude Code."""
-    # Validate --full usage
-    if full and not (skills or subagents):
-        console.print("[red]Error: --full requires --skills or --subagents[/red]")
-        raise typer.Exit(1)
-
+    """Track quality metrics for custom Skills and Subagents in Claude Code."""
     # Parse date range
     start_date, end_date, date_label = parse_period(period)
 
@@ -149,20 +146,20 @@ def main(
         include_project_prefix = False
         current_project_name = extract_project_name(project_filter)
 
-    tool_calls = load_tool_calls(
+    executions = load_tool_executions(
         start_date=start_date,
         end_date=end_date,
         project_filter=project_filter,
     )
-    stats = analyze(tool_calls, include_project_prefix=include_project_prefix)
-    display(
+    stats = analyze_quality(executions, include_project_prefix=include_project_prefix)
+    display_quality(
         stats,
+        threshold=threshold / 100.0,  # Convert percentage to decimal
         start_date=start_date,
         end_date=end_date,
         date_label=date_label,
         show_skills=skills,
         show_subagents=subagents,
-        show_full=full,
         project_name=current_project_name,
     )
 

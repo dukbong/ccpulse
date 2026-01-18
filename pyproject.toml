@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ccpulse"
-version = "0.3.1"
-description = "Track your custom Skills and Subagents usage in Claude Code"
+version = "1.0.0"
+description = "Track quality metrics for custom Skills and Subagents in Claude Code"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
